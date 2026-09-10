@@ -1,0 +1,272 @@
+name: Build BENZO Manga Empire
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Initialize Project
+        run: flutter create --org com.benzo.manga manga_app
+
+      - name: Inject Complete BENZO Code
+        shell: python
+        run: |
+          code = r'''
+          import 'package:flutter/material.dart';
+
+          void main() => runApp(const MangaAlArabEmpire());
+
+          enum Role { owner, headAdmin, superAdmin, adminMonth, admin, translator, editor, member, guest }
+
+          class VipPackage {
+            final String id;
+            final String name;
+            final String perks;
+            final int pointsPrice;
+            final Color color;
+
+            VipPackage({
+              required this.id,
+              required this.name,
+              required this.perks,
+              required this.pointsPrice,
+              required this.color,
+            });
+          }
+
+          class MangaAlArabEmpire extends StatefulWidget {
+            const MangaAlArabEmpire({Key? key}) : super(key: key);
+            @override
+            State<MangaAlArabEmpire> createState() => _MangaAlArabEmpireState();
+          }
+
+          class _MangaAlArabEmpireState extends State<MangaAlArabEmpire> {
+            Role currentRole = Role.guest;
+            String currentUser = "ضيف BENZO";
+            bool isLoggedIn = false;
+            String appName = "BENZO";
+            String logoUrl = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400";
+            int userPoints = 1000;
+            bool doublePoints = false;
+            bool triplePoints = false;
+            bool browserUnlocked = false;
+            bool exclusiveSourcesUnlocked = false;
+            bool offlineDownloadUnlocked = false;
+            String discordUrl = "https://discord.gg/manga-alarab";
+            String? currentActiveBroadcast;
+
+            final List<VipPackage> packages = [
+              VipPackage(
+                id: "1",
+                name: "باقة المحارب الفضي ⚔️",
+                perks: "إزالة الإعلانات بالكامل + شارة فضية مميزة + قراءة غير محدودة.",
+                pointsPrice: 5000,
+                color: Colors.blueGrey,
+              ),
+              VipPackage(
+                id: "2",
+                name: "باقة التنين الذهبي 🐉",
+                perks: "فتح مصادر سوات ومانجاليك + هالة ذهبية للبروفايل + خصم 20% بالنقاط.",
+                pointsPrice: 12000,
+                color: const Color(0xFFFFB703),
+              ),
+              VipPackage(
+                id: "3",
+                name: "باقة إمبراطور المانجا 👑",
+                perks: "دبل نقاط دائم (1000 نقطة لكل 5 فصول) + خط ملون متوهج + فصول تيم إكس.",
+                pointsPrice: 25000,
+                color: Colors.purpleAccent,
+              ),
+              VipPackage(
+                id: "4",
+                name: "باقة حاكم الظلال الأبدي ⚡",
+                perks: "تحميل الفصول وقراءتها بدون إنترنت + طلب ترجمة أعمال حصرية + شارة نارية.",
+                pointsPrice: 50000,
+                color: Colors.cyanAccent,
+              ),
+              VipPackage(
+                id: "5",
+                name: "باقة العرش الإلهي (VIP المطلق) 🪐",
+                perks: "تربل نقاط (1500 نقطة / 3 فصول) + ثيم ملكي + متصفح أدوات المانجا + شات كبار الشخصيات.",
+                pointsPrice: 100000,
+                color: Colors.redAccent,
+              ),
+            ];
+
+            final List<String> auditLogs = [
+              "[أمان] تشغيل درع الحماية ومكافحة التخريب اللحظي لإمبراطورية BENZO.",
+              "[سيرفر] دمج مصادر سوات مانجا وتيم إكس ومانجاليك.",
+            ];
+
+            void addLog(String log) {
+              setState(() {
+                auditLogs.insert(0, "[${DateTime.now().hour}:${DateTime.now().minute}] $log");
+              });
+            }
+
+            void loginAs(String username, Role role) {
+              setState(() {
+                currentUser = username;
+                currentRole = role;
+                isLoggedIn = true;
+                if (role == Role.owner) {
+                  userPoints = 999999;
+                  doublePoints = true;
+                  triplePoints = true;
+                  browserUnlocked = true;
+                  exclusiveSourcesUnlocked = true;
+                  offlineDownloadUnlocked = true;
+                }
+              });
+              addLog("دخول ناجح: $username برتبة: $role");
+            }
+
+            void logout() {
+              setState(() {
+                currentRole = Role.guest;
+                currentUser = "ضيف BENZO";
+                isLoggedIn = false;
+                browserUnlocked = false;
+                doublePoints = false;
+                triplePoints = false;
+                exclusiveSourcesUnlocked = false;
+                offlineDownloadUnlocked = false;
+              });
+              addLog("تم تسجيل الخروج");
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              return MaterialApp(
+                title: appName,
+                debugShowCheckedModeBanner: false,
+                theme: ThemeData.dark().copyWith(
+                  scaffoldBackgroundColor: const Color(0xFF07070C),
+                  cardColor: const Color(0xFF12121E),
+                  primaryColor: const Color(0xFFFFB703),
+                ),
+                home: Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: MainHomeScreen(
+                    appName: appName,
+                    logoUrl: logoUrl,
+                    currentUser: currentUser,
+                    currentRole: currentRole,
+                    isLoggedIn: isLoggedIn,
+                    userPoints: userPoints,
+                    doublePoints: doublePoints,
+                    triplePoints: triplePoints,
+                    browserUnlocked: browserUnlocked,
+                    exclusiveSourcesUnlocked: exclusiveSourcesUnlocked,
+                    offlineDownloadUnlocked: offlineDownloadUnlocked,
+                    discordUrl: discordUrl,
+                    packages: packages,
+                    auditLogs: auditLogs,
+                    currentBroadcast: currentActiveBroadcast,
+                    onLogin: loginAs,
+                    onLogout: logout,
+                    onPointsChanged: (p) => setState(() => userPoints += p),
+                    onNameChanged: (n) { setState(() => appName = n); addLog("تعديل الاسم إلى: $n"); },
+                    onLogoChanged: (l) { setState(() => logoUrl = l); addLog("تحديث الشعار"); },
+                    onDiscordChanged: (d) { setState(() => discordUrl = d); addLog("تحديث ديسكورد"); },
+                    onToggleBrowser: (v) { setState(() => browserUnlocked = v); addLog("تبديل حالة المتصفح"); },
+                    onToggleDoublePoints: (v) { setState(() => doublePoints = v); addLog("تبديل دبل النقاط"); },
+                    onToggleSources: (v) { setState(() => exclusiveSourcesUnlocked = v); addLog("تبديل المصادر"); },
+                    onAddPackage: (pkg) {
+                      setState(() => packages.add(pkg));
+                      addLog("إنشاء باقة جديدة: ${pkg.name}");
+                    },
+                    onBroadcastSent: (msg) {
+                      setState(() => currentActiveBroadcast = msg);
+                      addLog("إرسال إشعار فوري: $msg");
+                    },
+                  ),
+                ),
+              );
+            }
+          }
+
+          class MainHomeScreen extends StatefulWidget {
+            final String appName;
+            final String logoUrl;
+            final String currentUser;
+            final Role currentRole;
+            final bool isLoggedIn;
+            final int userPoints;
+            final bool doublePoints;
+            final bool triplePoints;
+            final bool browserUnlocked;
+            final bool exclusiveSourcesUnlocked;
+            final bool offlineDownloadUnlocked;
+            final String discordUrl;
+            final List<VipPackage> packages;
+            final List<String> auditLogs;
+            final String? currentBroadcast;
+            final Function(String, Role) onLogin;
+            final VoidCallback onLogout;
+            final Function(int) onPointsChanged;
+            final Function(String) onNameChanged;
+            final Function(String) onLogoChanged;
+            final Function(String) onDiscordChanged;
+            final Function(bool) onToggleBrowser;
+            final Function(bool) onToggleDoublePoints;
+            final Function(bool) onToggleSources;
+            final Function(VipPackage) onAddPackage;
+            final Function(String) onBroadcastSent;
+
+            const MainHomeScreen({
+              Key? key,
+              required this.appName,
+              required this.logoUrl,
+              required this.currentUser,
+              required this.currentRole,
+              required this.isLoggedIn,
+              required this.userPoints,
+              required this.doublePoints,
+              required this.triplePoints,
+              required this.browserUnlocked,
+              required this.exclusiveSourcesUnlocked,
+              required this.offlineDownloadUnlocked,
+              required this.discordUrl,
+              required this.packages,
+              required this.auditLogs,
+              this.currentBroadcast,
+              required this.onLogin,
+              required this.onLogout,
+              required this.onPointsChanged,
+              required this.onNameChanged,
+              required this.onLogoChanged,
+              required this.onDiscordChanged,
+              required this.onToggleBrowser,
+              required this.onToggleDoublePoints,
+              required this.onToggleSources,
+              required this.onAddPackage,
+              required this.onBroadcastSent,
+            }) : super(key: key);
+
+            @override
+            State<MainHomeScreen> createState() => _MainHomeScreenState();
+          }
+
+          class _MainHomeScreenState extends State<MainHomeScreen> {
+            int _tab = 0;
+            final Lis
