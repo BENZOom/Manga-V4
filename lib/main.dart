@@ -2,245 +2,144 @@ import 'package:flutter/material.dart';
 
 void main() => runApp(const MangaArabApp());
 
+enum UserRole { owner, headAdmin, superAdmin, adminMonth, admin, translator, editor, member, guest }
+
 class MangaArabApp extends StatefulWidget {
   const MangaArabApp({Key? key}) : super(key: key);
-
   @override
   State<MangaArabApp> createState() => _MangaArabAppState();
 }
 
 class _MangaArabAppState extends State<MangaArabApp> {
   Color primaryColor = const Color(0xFFFF5722);
+  bool isDarkMode = true;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'MANGA ARAB',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF0D0D12),
-        cardColor: const Color(0xFF161622),
+      theme: ThemeData(
+        brightness: isDarkMode ? Brightness.dark : Brightness.light,
+        scaffoldBackgroundColor: isDarkMode ? const Color(0xFF0D0D12) : const Color(0xFFF5F5F7),
+        cardColor: isDarkMode ? const Color(0xFF161622) : Colors.white,
         primaryColor: primaryColor,
-        colorScheme: ColorScheme.dark(primary: primaryColor),
+        colorScheme: ColorScheme.fromSeed(seedColor: primaryColor, brightness: isDarkMode ? Brightness.dark : Brightness.light),
       ),
       home: Directionality(
         textDirection: TextDirection.rtl,
-        child: MainMasterScreen(
+        child: MasterAppScreen(
           activeColor: primaryColor,
+          isDarkMode: isDarkMode,
           onThemeChange: (c) => setState(() => primaryColor = c),
+          onModeToggle: () => setState(() => isDarkMode = !isDarkMode),
         ),
       ),
     );
   }
 }
 
-class MainMasterScreen extends StatefulWidget {
+class MasterAppScreen extends StatefulWidget {
   final Color activeColor;
+  final bool isDarkMode;
   final ValueChanged<Color> onThemeChange;
+  final VoidCallback onModeToggle;
 
-  const MainMasterScreen({Key? key, required this.activeColor, required this.onThemeChange}) : super(key: key);
+  const MasterAppScreen({
+    Key? key,
+    required this.activeColor,
+    required this.isDarkMode,
+    required this.onThemeChange,
+    required this.onModeToggle,
+  }) : super(key: key);
 
   @override
-  State<MainMasterScreen> createState() => _MainMasterScreenState();
+  State<MasterAppScreen> createState() => _MasterAppScreenState();
 }
 
-class _MainMasterScreenState extends State<MainMasterScreen> {
+class _MasterAppScreenState extends State<MasterAppScreen> {
   int _tab = 0;
-  int userCoins = 999999;
   String username = "BENZO";
-  String currentRole = "👑 الفاوندر والمالك";
-  bool isOwner = true;
+  UserRole role = UserRole.owner;
+  int coins = 999999;
   String equippedFrame = "Golden hex";
+  Color customNameColor = const Color(0xFFFFB703);
+  int selectedFontId = 1;
+
+  // الصلاحيات الاستثنائية الممنوحة (Overrides)
+  bool canBanOverride = true;
+  bool canTimeoutOverride = true;
+  bool canUseBrowserOverride = true;
   bool doublePoints = true;
   bool antiHackShield = true;
   String? activeBroadcast;
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  final List<Map<String, dynamic>> frames = [
+  // الرتب بالترتيب الهرمي الدقيق
+  final Map<UserRole, String> roleLabels = {
+    UserRole.owner: "👑 الفاوندر والمالك",
+    UserRole.headAdmin: "⚡ هيد ادمن",
+    UserRole.superAdmin: "🛡️ سوبر ادمن",
+    UserRole.adminMonth: "⭐ ادمن الشهر",
+    UserRole.admin: "🔰 ادمن",
+    UserRole.translator: "✍️ مترجم",
+    UserRole.editor: "🎨 محرر",
+    UserRole.member: "👤 عضو",
+    UserRole.guest: "👀 ضيف (قراءة مقفلة)",
+  };
+
+  // المتجر والإطارات
+  final List<Map<String, dynamic>> shopFrames = [
     {"name": "Golden hex", "price": 1200, "color": Colors.amber, "icon": Icons.star},
     {"name": "Laurel wreath", "price": 1200, "color": Colors.amberAccent, "icon": Icons.emoji_events},
     {"name": "Rage blue", "price": 1400, "color": Colors.blueAccent, "icon": Icons.flash_on},
     {"name": "Jet ring", "price": 1600, "color": Colors.purpleAccent, "icon": Icons.album},
     {"name": "Fire aura", "price": 3000, "color": Colors.deepOrangeAccent, "icon": Icons.local_fire_department},
+    {"name": "Kitsune", "price": 3000, "color": Colors.pinkAccent, "icon": Icons.auto_awesome},
   ];
 
-  final List<Map<String, dynamic>> customPackages = [
-    {"name": "باقة المحارب الفضي ⚔️", "points": 5000, "desc": "إزالة الإعلانات + شارة فضية"},
-    {"name": "باقة التنين الذهبي 🐉", "points": 12000, "desc": "فتح مصادر سوات ومانجاليك"},
-    {"name": "باقة إمبراطور المانجا 👑", "points": 25000, "desc": "دبل نقاط دائم وفصول تيم إكس"},
-    {"name": "باقة حاكم الظلال ⚡", "points": 50000, "desc": "تحميل الفصول بدون نت"},
-    {"name": "باقة العرش الإلهي 🪐", "points": 100000, "desc": "تربل نقاط وثيم ملكي خاص"},
+  // المهام اليومية ورتبة الصياد A
+  final List<Map<String, dynamic>> dailyQuests = [
+    {"title": "قراءة يومية 3 فصول", "cur": 2, "max": 3, "reward": 6, "done": false},
+    {"title": "جلسة قراءة 8 فصول", "cur": 7, "max": 8, "reward": 8, "done": false},
+    {"title": "كتابة تعليق يومي", "cur": 1, "max": 1, "reward": 3, "done": false},
+    {"title": "تسجيل الدخول اليومي", "cur": 1, "max": 1, "reward": 5, "done": true},
   ];
 
+  // سجل العمليات الشامل
   final List<String> auditLogs = [
-    "[أمان] تشغيل درع مكافحة الاختراق بنجاح.",
-    "[رتبة] تفعيل صلاحيات الفاوندر المطلقة للمستخدم BENZO.",
-    "[متجر] جاهزية 5 باقات ملكية للشراء والاستخدام.",
+    "[أمان] درع مكافحة التخريب والاختراق يعمل بنسبة 100%.",
+    "[صلاحيات] تم تنصيب BENZO مالكاً ومؤسساً للإمبراطورية.",
   ];
 
-  final List<String> adminChatMessages = [
-    "BENZO (الفاوندر): يا شباب، تم تفعيل سحب الفصول تلقائياً من سوات ومانجاليك.",
-    "مشرف عام: تم فحص التعليقات ولا توجد مخالفات حالياً.",
+  // شات الإدارة السري
+  final List<String> adminChat = [
+    "BENZO (الفاوندر): تم ربط فصول سوات مانجا وتيم إكس ومانجاليك.",
+    "سوبر ادمن: تم تفعيل مراقبة مكافحة التخريب اللحظية.",
   ];
 
+  // قائمة الإعلانات الإدارية
   final List<String> adminAnnouncements = [
-    "📢 إعلان إداري: يمنع حظر أي عضو بدون تسجيل سبب العقوبة في الـ Log.",
+    "📢 إعلان رسمي: يمنع حظر أي عضو دون تدوين السبب في سجل الـ Logs.",
   ];
 
   void _addLog(String text) {
     setState(() => auditLogs.insert(0, "[${DateTime.now().hour}:${DateTime.now().minute}] $text"));
   }
 
-  void _showBanDialog() {
-    final ctrl = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text("حظر مستخدم (Ban) 🚫"),
-        content: TextField(controller: ctrl, decoration: const InputDecoration(labelText: "اسم المستخدم")),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () {
-              if (ctrl.text.isNotEmpty) {
-                _addLog("قام الإداري بحظر المستخدم: ${ctrl.text}");
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("تم حظر ${ctrl.text} بنجاح!")));
-              }
-            },
-            child: const Text("تأكيد الحظر"),
-          )
-        ],
-      ),
-    );
-  }
-
-  void _showTimeoutDialog() {
-    final ctrl = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text("تايم أوت لمستخدم ⏱️"),
-        content: TextField(controller: ctrl, decoration: const InputDecoration(labelText: "اسم المستخدم (تايم أوت)")),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orangeAccent),
-            onPressed: () {
-              if (ctrl.text.isNotEmpty) {
-                _addLog("تايم أوت لمدة 24 ساعة للمستخدم: ${ctrl.text}");
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("تم إعطاء تايم أوت لـ ${ctrl.text}!")));
-              }
-            },
-            child: const Text("تأكيد"),
-          )
-        ],
-      ),
-    );
-  }
-
-  void _showCreatePackageDialog() {
-    final nameCtrl = TextEditingController();
-    final priceCtrl = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141424),
-        title: const Text("إنشاء باقة جديدة 👑"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "اسم الباقة")),
-            TextField(controller: priceCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "السعر بالنقاط")),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-            onPressed: () {
-              if (nameCtrl.text.isNotEmpty) {
-                setState(() {
-                  customPackages.add({
-                    "name": nameCtrl.text,
-                    "points": int.tryParse(priceCtrl.text) ?? 20000,
-                    "desc": "باقة حصرية من المالك BENZO",
-                  });
-                });
-                _addLog("إنشاء باقة جديدة: ${nameCtrl.text}");
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("تم نشر الباقة بنجاح!")));
-              }
-            },
-            child: const Text("نشر الباقة", style: TextStyle(color: Colors.black)),
-          )
-        ],
-      ),
-    );
-  }
-
-  void _showFollowers() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF141422),
-      builder: (c) => ListView(
-        padding: const EdgeInsets.all(16),
-        children: const [
-          Text("قائمة الرتب والمتابعين 👑", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          ListTile(title: Text("Oussama"), trailing: Text("مدير 👑", style: TextStyle(color: Colors.amber))),
-          ListTile(title: Text("دحيم"), trailing: Text("داعم أسطوري 🌟", style: TextStyle(color: Colors.pinkAccent))),
-          ListTile(title: Text("القارئ الصامت"), trailing: Text("داعم ذهبي 💎", style: TextStyle(color: Colors.orangeAccent))),
-          ListTile(title: Text("LIMBO"), trailing: Text("مشرف 🔰", style: TextStyle(color: Colors.tealAccent))),
-        ],
-      ),
-    );
-  }
-
-  void _showGift() {
-    showDialog(
-      context: context,
-      builder: (c) => AlertDialog(
-        backgroundColor: const Color(0xFF141422),
-        title: const Text("مكافأة يومية 🎁"),
-        content: const Text("حصلت على 50 نقطة مجانية!"),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: widget.activeColor),
-            onPressed: () {
-              setState(() => userCoins += 50);
-              Navigator.pop(c);
-            },
-            child: const Text("استلام", style: TextStyle(color: Colors.black)),
-          )
-        ],
-      ),
-    );
-  }
-
-  void _showSearch() {
-    showDialog(
-      context: context,
-      builder: (c) => AlertDialog(
-        backgroundColor: const Color(0xFF141422),
-        title: const Text("بحث في مانجا عرب"),
-        content: const TextField(decoration: InputDecoration(hintText: "اسم العمل...")),
-        actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text("إغلاق"))],
-      ),
-    );
-  }
+  bool get canAccessBrowser => role == UserRole.owner || canUseBrowserOverride;
+  bool get canModerate => role == UserRole.owner || role == UserRole.headAdmin || role == UserRole.superAdmin || canBanOverride;
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> pages = [
+    final List<Widget> views = [
       _buildHome(),
       _buildShop(),
       _buildMissions(),
       _buildProfile(),
       _buildAdminDashboard(),
-      if (isOwner) _buildOwnerRoom(),
+      if (role == UserRole.owner) _buildOwnerRoom(),
       _buildSupport(),
     ];
 
@@ -261,12 +160,17 @@ class _MainMasterScreenState extends State<MainMasterScreen> {
           ],
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.search), onPressed: _showSearch),
           IconButton(
-            icon: const Icon(Icons.security, color: Colors.amber),
-            tooltip: "لوحة المشرفين",
-            onPressed: () => setState(() => _tab = 4),
+            icon: Icon(widget.isDarkMode ? Icons.light_mode : Icons.dark_mode, color: Colors.amber),
+            onPressed: widget.onModeToggle,
           ),
+          IconButton(icon: const Icon(Icons.search), onPressed: _showSearch),
+          if (canModerate)
+            IconButton(
+              icon: const Icon(Icons.security, color: Colors.cyanAccent),
+              tooltip: "لوحة الإدارة",
+              onPressed: () => setState(() => _tab = 4),
+            ),
         ],
       ),
       body: Column(
@@ -281,13 +185,13 @@ class _MainMasterScreenState extends State<MainMasterScreen> {
           Expanded(
             child: Stack(
               children: [
-                pages[_tab >= pages.length ? 0 : _tab],
+                views[_tab >= views.length ? 0 : _tab],
                 Positioned(
                   bottom: 20,
                   left: 20,
                   child: FloatingActionButton(
                     backgroundColor: widget.activeColor,
-                    onPressed: _showGift,
+                    onPressed: _showDailyGift,
                     child: const Icon(Icons.card_giftcard, color: Colors.black),
                   ),
                 ),
@@ -309,38 +213,45 @@ class _MainMasterScreenState extends State<MainMasterScreen> {
             decoration: const BoxDecoration(color: Color(0xFF141422)),
             child: Row(
               children: [
-                CircleAvatar(radius: 30, backgroundColor: widget.activeColor, child: const Icon(Icons.person, color: Colors.black, size: 36)),
+                CircleAvatar(
+                  radius: 32,
+                  backgroundColor: widget.activeColor,
+                  child: const Icon(Icons.person, color: Colors.black, size: 38),
+                ),
                 const SizedBox(width: 12),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(username, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                    Text(currentRole, style: const TextStyle(fontSize: 10, color: Colors.white70)),
-                    const SizedBox(height: 4),
-                    Text("$userCoins 🪙", style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
-                  ],
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(username, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: customNameColor)),
+                      Text(roleLabels[role]!, style: const TextStyle(fontSize: 10, color: Colors.white70)),
+                      const SizedBox(height: 4),
+                      Text("$coins 🪙", style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          _drawerTile(Icons.home, "الرئيسية", 0),
-          _drawerTile(Icons.storefront, "المتجر", 1),
-          _drawerTile(Icons.emoji_events, "المهمات والإنجازات", 2),
-          _drawerTile(Icons.person, "الملف الشخصي", 3),
-          _drawerTile(Icons.security, "لوحة الإدارة والمشرفين 🛡️", 4),
-          if (isOwner) _drawerTile(Icons.build, "غرفة المالك BENZO 👑", 5),
-          _drawerTile(Icons.volunteer_activism, "ادعمنا واحصل على نقاط ❤️", 6, isRed: true),
+          _drawerItem(Icons.home, "الرئيسية", 0),
+          _drawerItem(Icons.storefront, "المتجر والإطارات 🛒", 1),
+          _drawerItem(Icons.emoji_events, "المهمات ورتبة الصياد 🏆", 2),
+          _drawerItem(Icons.person, "الملف الشخصي", 3),
+          if (canModerate) _drawerItem(Icons.security, "لوحة تحكم المشرفين 🛡️", 4),
+          if (role == UserRole.owner) _drawerItem(Icons.build, "غرفة المالك BENZO 👑", 5),
+          _drawerItem(Icons.volunteer_activism, "ادعمنا واحصل على نقاط ❤️", 6, isRed: true),
           const Divider(color: Colors.white12),
-          const Padding(padding: EdgeInsets.all(14), child: Text("المظهر الحي:", style: TextStyle(color: Colors.white60))),
+          const Padding(padding: EdgeInsets.all(12), child: Text("مغير الألوان الحي:", style: TextStyle(color: Colors.white60))),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _colorCircle(const Color(0xFFFF5722)),
-              _colorCircle(Colors.amber),
-              _colorCircle(Colors.purpleAccent),
-              _colorCircle(Colors.tealAccent),
-              _colorCircle(Colors.redAccent),
+              _colorDot(const Color(0xFFFF5722)),
+              _colorDot(Colors.amber),
+              _colorDot(Colors.pinkAccent),
+              _colorDot(Colors.purpleAccent),
+              _colorDot(Colors.tealAccent),
+              _colorDot(Colors.redAccent),
             ],
           ),
         ],
@@ -348,10 +259,10 @@ class _MainMasterScreenState extends State<MainMasterScreen> {
     );
   }
 
-  Widget _drawerTile(IconData icon, String title, int idx, {bool isRed = false}) {
+  Widget _drawerItem(IconData icon, String title, int idx, {bool isRed = false}) {
     return ListTile(
-      leading: Icon(icon, color: isRed ? Colors.redAccent : Colors.white70),
-      title: Text(title, style: TextStyle(color: isRed ? Colors.redAccent : Colors.white, fontWeight: isRed ? FontWeight.bold : FontWeight.normal)),
+      leading: Icon(icon, color: isRed ? Colors.redAccent : widget.activeColor),
+      title: Text(title, style: TextStyle(color: isRed ? Colors.redAccent : Colors.white)),
       onTap: () {
         setState(() => _tab = idx);
         Navigator.pop(context);
@@ -359,13 +270,13 @@ class _MainMasterScreenState extends State<MainMasterScreen> {
     );
   }
 
-  Widget _colorCircle(Color c) {
+  Widget _colorDot(Color c) {
     return GestureDetector(
       onTap: () {
         widget.onThemeChange(c);
         Navigator.pop(context);
       },
-      child: CircleAvatar(radius: 14, backgroundColor: c),
+      child: CircleAvatar(radius: 12, backgroundColor: c),
     );
   }
 
@@ -381,19 +292,19 @@ class _MainMasterScreenState extends State<MainMasterScreen> {
           ),
           padding: const EdgeInsets.all(14),
           alignment: Alignment.bottomRight,
-          child: const Text("MANGA ARAB\nوجهتك الأولى للمانجا المترجمة", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          child: const Text("MANGA ARAB\nوجهتك الأولى للمانجا والمانهو المترجمة 👑", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
         ),
         const SizedBox(height: 16),
-        const Text("الأعمال الحصرية (سوات - تيم إكس - مانجاليك) 🔥", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const Text("الأعمال الحصرية (سوات مانجا - تيم إكس - مانجاليك) 🔥", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 10),
-        _mangaCard("The Divine Ring Descends", "الفصل 100", "9.0 ⭐"),
-        _mangaCard("I Reincarnated As the Crazed Heir", "الفصل 85", "8.8 ⭐"),
-        _mangaCard("Skills have no cooldown", "الفصل 42", "8.2 ⭐"),
+        _mangaTile("The Divine Ring Descends", "الفصل 100 (سوات مانجا)", "9.0 ⭐"),
+        _mangaTile("I Reincarnated As the Crazed Heir", "الفصل 85 (تيم إكس)", "8.8 ⭐"),
+        _mangaTile("Skills have no cooldown", "الفصل 42 (مانجاليك)", "8.2 ⭐"),
       ],
     );
   }
 
-  Widget _mangaCard(String title, String chapter, String rating) {
+  Widget _mangaTile(String title, String chapter, String rating) {
     return Card(
       color: const Color(0xFF141422),
       margin: const EdgeInsets.only(bottom: 10),
@@ -404,7 +315,11 @@ class _MainMasterScreenState extends State<MainMasterScreen> {
         trailing: ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: widget.activeColor),
           onPressed: () {
-            Navigator.push(context, MaterialPageRoute(builder: (c) => MangaReaderView(title: title)));
+            if (role == UserRole.guest) {
+              _showGuestBlocker();
+            } else {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => MangaReaderScreen(title: title)));
+            }
           },
           child: const Text("قراءة", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         ),
@@ -419,12 +334,12 @@ class _MainMasterScreenState extends State<MainMasterScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text("متجر الإطارات 🛒", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            Text("$userCoins 🪙", style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+            const Text("متجر الإطارات والباقات 🛒", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text("$coins 🪙", style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
           ],
         ),
         const SizedBox(height: 12),
-        ...frames.map((f) => Card(
+        ...shopFrames.map((f) => Card(
           color: const Color(0xFF141422),
           child: ListTile(
             leading: Icon(f['icon'], color: f['color'], size: 36),
@@ -434,7 +349,8 @@ class _MainMasterScreenState extends State<MainMasterScreen> {
               style: ElevatedButton.styleFrom(backgroundColor: widget.activeColor),
               onPressed: () {
                 setState(() => equippedFrame = f['name']);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("تم تجهيز إطار ${f['name']} بنجاح!")));
+                _addLog("شراء وتجهيز إطار: ${f['name']}");
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("تم تجهيز ${f['name']} بنجاح!")));
               },
               child: Text(equippedFrame == f['name'] ? "مفعّل" : "شراء", style: const TextStyle(color: Colors.black)),
             ),
@@ -463,21 +379,15 @@ class _MainMasterScreenState extends State<MainMasterScreen> {
         const SizedBox(height: 16),
         const Text("المهام اليومية ☀️", style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        _missionTile("قراءة 3 فصول يومية", "2 / 3", "+6 نقاط"),
-        _missionTile("جلسة قراءة 8 فصول", "7 / 8", "+8 نقاط"),
-        _missionTile("تسجيل الدخول اليومي", "1 / 1", "+5 نقاط (مكتمل)"),
+        ...dailyQuests.map((q) => Card(
+          color: const Color(0xFF141422),
+          child: ListTile(
+            title: Text(q['title']),
+            subtitle: Text("${q['cur']} / ${q['max']}"),
+            trailing: Text("+${q['reward']} نقطة", style: TextStyle(color: widget.activeColor, fontWeight: FontWeight.bold)),
+          ),
+        )).toList(),
       ],
-    );
-  }
-
-  Widget _missionTile(String title, String progress, String reward) {
-    return Card(
-      color: const Color(0xFF141422),
-      child: ListTile(
-        title: Text(title),
-        subtitle: Text(progress),
-        trailing: Text(reward, style: TextStyle(color: widget.activeColor, fontWeight: FontWeight.bold)),
-      ),
     );
   }
 
@@ -488,16 +398,26 @@ class _MainMasterScreenState extends State<MainMasterScreen> {
         Center(
           child: Column(
             children: [
-              CircleAvatar(radius: 40, backgroundColor: widget.activeColor, child: const Icon(Icons.person, size: 48, color: Colors.black)),
+              CircleAvatar(radius: 38, backgroundColor: widget.activeColor, child: const Icon(Icons.person, size: 44, color: Colors.black)),
               const SizedBox(height: 8),
-              Text(username, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-              Text(currentRole, style: const TextStyle(color: Colors.amber, fontSize: 12)),
-              Text("الإطار النشط: $equippedFrame", style: const TextStyle(color: Colors.white54, fontSize: 11)),
-              const SizedBox(height: 8),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.people, color: Colors.cyanAccent),
-                label: const Text("المتابعون والرتب"),
-                onPressed: _showFollowers,
+              Text(username, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: customNameColor)),
+              Text(roleLabels[role]!, style: const TextStyle(color: Colors.amber, fontSize: 12)),
+              Text("الإطار: $equippedFrame | خط رقم: $selectedFontId", style: const TextStyle(color: Colors.white54, fontSize: 11)),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.people, color: Colors.cyanAccent),
+                    label: const Text("المتابعون والرتب"),
+                    onPressed: _showFollowersModal,
+                  ),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.font_download, color: Colors.amber),
+                    label: const Text("الـ 100 خط والألوان"),
+                    onPressed: _showFontDialog,
+                  ),
+                ],
               ),
             ],
           ),
@@ -526,4 +446,68 @@ class _MainMasterScreenState extends State<MainMasterScreen> {
             Expanded(
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-                
+                icon: const Icon(Icons.gavel, color: Colors.white),
+                label: const Text("حظر (Ban)", style: TextStyle(color: Colors.white)),
+                onPressed: () => _openActionDialog("حظر عضو (Ban) 🚫"),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.orangeAccent),
+                icon: const Icon(Icons.timer, color: Colors.black),
+                label: const Text("تايم أوت", style: TextStyle(color: Colors.black)),
+                onPressed: () => _openActionDialog("تايم أوت 24 ساعة ⏱️"),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const Text("شات الإدارة السري 💬", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber)),
+        Container(
+          height: 120,
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: const Color(0xFF141422), borderRadius: BorderRadius.circular(10)),
+          child: ListView.builder(
+            itemCount: adminChat.length,
+            itemBuilder: (_, i) => Text(adminChat[i], style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          ),
+        ),
+        const SizedBox(height: 14),
+        const Text("الإعلانات الإدارية 📢", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+        ...adminAnnouncements.map((a) => Card(
+          color: const Color(0xFF141424),
+          child: Padding(padding: const EdgeInsets.all(10), child: Text(a, style: const TextStyle(fontSize: 12, color: Colors.white))),
+        )).toList(),
+      ],
+    );
+  }
+
+  Widget _buildOwnerRoom() {
+    final nameCtrl = TextEditingController();
+    final broadcastCtrl = TextEditingController();
+    final transferCtrl = TextEditingController();
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Text("غرفة عمليات المالك والفاوندر BENZO 👑", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.redAccent)),
+        const SizedBox(height: 12),
+        SwitchListTile(
+          tileColor: const Color(0xFF141424),
+          title: const Text("درع مكافحة التخريب والاختراق (Anti-Hack)"),
+          value: antiHackShield,
+          onChanged: (v) {
+            setState(() => antiHackShield = v);
+            _addLog("درع الحماية: ${v ? 'مفعل' : 'معطل'}");
+          },
+        ),
+        const SizedBox(height: 8),
+        SwitchListTile(
+          tileColor: const Color(0xFF141424),
+          title: const Text("مضاعفة النقاط (دبل نقاط)"),
+          value: doublePoints,
+          onChanged: (v) => setState(() => doublePoints = v),
+        ),
+   
