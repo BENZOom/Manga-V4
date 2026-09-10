@@ -88,7 +88,149 @@ class _MainMasterScreenState extends State<MainMasterScreen> {
     "📢 إعلان إداري: يمنع حظر أي عضو بدون تسجيل سبب العقوبة في الـ Log.",
   ];
 
-  final List<Map<String, String>> bannedUsers = [];
+  void _addLog(String text) {
+    setState(() => auditLogs.insert(0, "[${DateTime.now().hour}:${DateTime.now().minute}] $text"));
+  }
+
+  void _showBanDialog() {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        title: const Text("حظر مستخدم (Ban) 🚫"),
+        content: TextField(controller: ctrl, decoration: const InputDecoration(labelText: "اسم المستخدم")),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () {
+              if (ctrl.text.isNotEmpty) {
+                _addLog("قام الإداري بحظر المستخدم: ${ctrl.text}");
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("تم حظر ${ctrl.text} بنجاح!")));
+              }
+            },
+            child: const Text("تأكيد الحظر"),
+          )
+        ],
+      ),
+    );
+  }
+
+  void _showTimeoutDialog() {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        title: const Text("تايم أوت لمستخدم ⏱️"),
+        content: TextField(controller: ctrl, decoration: const InputDecoration(labelText: "اسم المستخدم (تايم أوت)")),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orangeAccent),
+            onPressed: () {
+              if (ctrl.text.isNotEmpty) {
+                _addLog("تايم أوت لمدة 24 ساعة للمستخدم: ${ctrl.text}");
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("تم إعطاء تايم أوت لـ ${ctrl.text}!")));
+              }
+            },
+            child: const Text("تأكيد"),
+          )
+        ],
+      ),
+    );
+  }
+
+  void _showCreatePackageDialog() {
+    final nameCtrl = TextEditingController();
+    final priceCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF141424),
+        title: const Text("إنشاء باقة جديدة 👑"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "اسم الباقة")),
+            TextField(controller: priceCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "السعر بالنقاط")),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
+            onPressed: () {
+              if (nameCtrl.text.isNotEmpty) {
+                setState(() {
+                  customPackages.add({
+                    "name": nameCtrl.text,
+                    "points": int.tryParse(priceCtrl.text) ?? 20000,
+                    "desc": "باقة حصرية من المالك BENZO",
+                  });
+                });
+                _addLog("إنشاء باقة جديدة: ${nameCtrl.text}");
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("تم نشر الباقة بنجاح!")));
+              }
+            },
+            child: const Text("نشر الباقة", style: TextStyle(color: Colors.black)),
+          )
+        ],
+      ),
+    );
+  }
+
+  void _showFollowers() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF141422),
+      builder: (c) => ListView(
+        padding: const EdgeInsets.all(16),
+        children: const [
+          Text("قائمة الرتب والمتابعين 👑", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          ListTile(title: Text("Oussama"), trailing: Text("مدير 👑", style: TextStyle(color: Colors.amber))),
+          ListTile(title: Text("دحيم"), trailing: Text("داعم أسطوري 🌟", style: TextStyle(color: Colors.pinkAccent))),
+          ListTile(title: Text("القارئ الصامت"), trailing: Text("داعم ذهبي 💎", style: TextStyle(color: Colors.orangeAccent))),
+          ListTile(title: Text("LIMBO"), trailing: Text("مشرف 🔰", style: TextStyle(color: Colors.tealAccent))),
+        ],
+      ),
+    );
+  }
+
+  void _showGift() {
+    showDialog(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: const Color(0xFF141422),
+        title: const Text("مكافأة يومية 🎁"),
+        content: const Text("حصلت على 50 نقطة مجانية!"),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: widget.activeColor),
+            onPressed: () {
+              setState(() => userCoins += 50);
+              Navigator.pop(c);
+            },
+            child: const Text("استلام", style: TextStyle(color: Colors.black)),
+          )
+        ],
+      ),
+    );
+  }
+
+  void _showSearch() {
+    showDialog(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: const Color(0xFF141422),
+        title: const Text("بحث في مانجا عرب"),
+        content: const TextField(decoration: InputDecoration(hintText: "اسم العمل...")),
+        actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text("إغلاق"))],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -373,7 +515,6 @@ class _MainMasterScreenState extends State<MainMasterScreen> {
     );
   }
 
-  // لوحة الإدارة والمشرفين (Admin Dashboard)
   Widget _buildAdminDashboard() {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -385,124 +526,4 @@ class _MainMasterScreenState extends State<MainMasterScreen> {
             Expanded(
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-                icon: const Icon(Icons.gavel, color: Colors.white),
-                label: const Text("حظر (Ban)", style: TextStyle(color: Colors.white)),
-                onPressed: _showBanDialog,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.orangeAccent),
-                icon: const Icon(Icons.timer, color: Colors.black),
-                label: const Text("تايم أوت", style: TextStyle(color: Colors.black)),
-                onPressed: _showTimeoutDialog,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        const Text("شات الإدارة السري 💬", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber)),
-        const SizedBox(height: 8),
-        Container(
-          height: 140,
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: const Color(0xFF141422), borderRadius: BorderRadius.circular(10)),
-          child: ListView.builder(
-            itemCount: adminChatMessages.length,
-            itemBuilder: (ctx, i) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Text(adminChatMessages[i], style: const TextStyle(fontSize: 12, color: Colors.white70)),
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-        const Text("إعلانات الإدارة العامة 📢", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
-        const SizedBox(height: 8),
-        ...adminAnnouncements.map((a) => Card(
-          color: const Color(0xFF141424),
-          child: Padding(padding: const EdgeInsets.all(10), child: Text(a, style: const TextStyle(fontSize: 12, color: Colors.white))),
-        )).toList(),
-      ],
-    );
-  }
-
-  // غرفة المالك والفاوندر الخارقة (Owner Super Room)
-  Widget _buildOwnerRoom() {
-    final nameCtrl = TextEditingController(text: username);
-    final broadcastCtrl = TextEditingController();
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const Text("غرفة عمليات المالك والفاوندر BENZO 👑", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.redAccent)),
-        const SizedBox(height: 12),
-        SwitchListTile(
-          tileColor: const Color(0xFF141424),
-          title: const Text("درع مكافحة الاختراق (Anti-Hack)"),
-          value: antiHackShield,
-          onChanged: (v) {
-            setState(() => antiHackShield = v);
-            _addLog("تم ${v ? 'تفعيل' : 'تعطيل'} درع مكافحة الاختراق");
-          },
-        ),
-        const SizedBox(height: 8),
-        SwitchListTile(
-          tileColor: const Color(0xFF141424),
-          title: const Text("مضاعفة النقاط (دبل نقاط)"),
-          value: doublePoints,
-          onChanged: (v) => setState(() => doublePoints = v),
-        ),
-        const SizedBox(height: 8),
-        ListTile(
-          tileColor: const Color(0xFF141424),
-          title: const Text("شحن 50,000 نقطة لمحفظتك"),
-          trailing: const Icon(Icons.add_circle, color: Colors.greenAccent),
-          onTap: () {
-            setState(() => userCoins += 50000);
-            _addLog("تم شحن 50,000 نقطة لمحفظة المالك");
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("تم شحن 50,000 نقطة بنجاح 🪙")));
-          },
-        ),
-        const SizedBox(height: 8),
-        ListTile(
-          tileColor: const Color(0xFF141424),
-          title: const Text("إنشاء ونشر باقة جديدة للمتجر 💎"),
-          trailing: const Icon(Icons.add, color: Colors.amber),
-          onTap: _showCreatePackageDialog,
-        ),
-        const SizedBox(height: 8),
-        ListTile(
-          tileColor: const Color(0xFF141424),
-          title: const Text("إرسال إشعار فوري لجميع المستخدمين 📢"),
-          trailing: const Icon(Icons.campaign, color: Colors.redAccent),
-          onTap: () {
-            showDialog(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                backgroundColor: const Color(0xFF1A1A2E),
-                title: const Text("اكتب الإشعار:"),
-                content: TextField(controller: broadcastCtrl, decoration: const InputDecoration(hintText: "نص الإشعار...")),
-                actions: [
-                  ElevatedButton(
-                    onPressed: () {
-                      if (broadcastCtrl.text.isNotEmpty) {
-                        setState(() => activeBroadcast = broadcastCtrl.text);
-                        _addLog("إرسال إشعار عام: ${broadcastCtrl.text}");
-                        Navigator.pop(ctx);
-                      }
-                    },
-                    child: const Text("إرسال للجميع"),
-                  )
-                ],
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 14),
-        const Text("سجل العمليات والرقابة (Audit Logs):", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
-        const SizedBox(height: 8),
-        Container(
-          height: 120,
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: const Color(0xFF0A0A12), b
+                
